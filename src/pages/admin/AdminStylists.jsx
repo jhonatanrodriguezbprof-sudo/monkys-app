@@ -17,9 +17,9 @@ export default function AdminStylists() {
   const [stylists, setStylists] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const salonId = SALON_ID || profile?.salon_id
   const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }))
@@ -37,25 +37,36 @@ export default function AdminStylists() {
     setLoading(false)
   }
 
-  async function addStylist() {
+  function openAdd() {
+    setEditTarget(null)
+    setForm(EMPTY_FORM)
+    setModalOpen(true)
+  }
+
+  function openEdit(stylist) {
+    setEditTarget(stylist)
+    setForm({ name: stylist.name, specialty: stylist.specialty || '', phone: stylist.phone || '' })
+    setModalOpen(true)
+  }
+
+  async function save() {
     if (!form.name.trim()) {
       toast.error('El nombre es obligatorio')
       return
     }
     setSaving(true)
-    const { error } = await supabase.from('stylists').insert({
-      salon_id: salonId,
+    const payload = {
       name: form.name.trim(),
       specialty: form.specialty.trim() || null,
       phone: form.phone.trim() || null,
-      is_active: true,
-    })
-    setSaving(false)
-    if (error) {
-      toast.error('Error al agregar estilista')
-      return
     }
-    toast.success('✅ Estilista agregada')
+    const { error } = editTarget
+      ? await supabase.from('stylists').update(payload).eq('id', editTarget.id)
+      : await supabase.from('stylists').insert({ ...payload, salon_id: salonId, is_active: true })
+
+    setSaving(false)
+    if (error) { toast.error(error.message || 'Error al guardar'); return }
+    toast.success(editTarget ? 'Estilista actualizada' : '✅ Estilista agregada')
     setModalOpen(false)
     setForm(EMPTY_FORM)
     fetchStylists()
@@ -66,23 +77,15 @@ export default function AdminStylists() {
       .from('stylists')
       .update({ is_active: !stylist.is_active })
       .eq('id', stylist.id)
-    if (error) { toast.error('Error al actualizar'); return }
+    if (error) { toast.error(error.message || 'Error al actualizar'); return }
     toast.success(stylist.is_active ? 'Estilista desactivada' : 'Estilista activada')
-    fetchStylists()
-  }
-
-  async function deleteStylist(id) {
-    const { error } = await supabase.from('stylists').delete().eq('id', id)
-    if (error) { toast.error('No se puede eliminar (tiene citas asociadas)'); return }
-    toast.success('Estilista eliminada')
-    setConfirmDelete(null)
     fetchStylists()
   }
 
   return (
     <AppShell
       title="Estilistas"
-      actions={<Button size="sm" onClick={() => setModalOpen(true)}>+ Agregar</Button>}
+      actions={<Button size="sm" onClick={openAdd}>+ Agregar</Button>}
     >
       <div className="px-4 py-5 space-y-3">
         {loading ? <Spinner /> : stylists.length === 0 ? (
@@ -92,7 +95,7 @@ export default function AdminStylists() {
           </div>
         ) : (
           stylists.map((s) => (
-            <Card key={s.id} className="flex items-center gap-4">
+            <Card key={s.id} className={`flex items-center gap-4 ${!s.is_active ? 'opacity-60' : ''}`}>
               <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-2xl flex-shrink-0">
                 {s.avatar_url
                   ? <img src={s.avatar_url} alt={s.name} className="w-full h-full rounded-full object-cover" />
@@ -100,32 +103,28 @@ export default function AdminStylists() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-brown">{s.name}</p>
-                {s.specialty && (
-                  <p className="text-xs text-gray-400 mt-0.5">{s.specialty}</p>
-                )}
-                {s.phone && (
-                  <p className="text-xs text-primary font-medium mt-0.5">📱 {s.phone}</p>
-                )}
+                {s.specialty && <p className="text-xs text-gray-400 mt-0.5">{s.specialty}</p>}
+                {s.phone && <p className="text-xs text-primary font-medium mt-0.5">📱 {s.phone}</p>}
                 <Badge color={s.is_active ? 'green' : 'gray'} className="mt-1">
                   {s.is_active ? 'Activa' : 'Inactiva'}
                 </Badge>
               </div>
               <div className="flex flex-col gap-1.5">
                 <button
+                  onClick={() => openEdit(s)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-xl bg-primary-50 text-primary hover:bg-primary-100 transition-colors"
+                >
+                  Editar
+                </button>
+                <button
                   onClick={() => toggleActive(s)}
                   className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-colors ${
                     s.is_active
                       ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      : 'bg-primary-50 text-primary hover:bg-primary-100'
+                      : 'bg-green-50 text-green-600 hover:bg-green-100'
                   }`}
                 >
                   {s.is_active ? 'Desactivar' : 'Activar'}
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(s)}
-                  className="text-xs font-bold px-3 py-1.5 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                >
-                  Eliminar
                 </button>
               </div>
             </Card>
@@ -133,8 +132,11 @@ export default function AdminStylists() {
         )}
       </div>
 
-      {/* Add modal */}
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setForm(EMPTY_FORM) }} title="Nueva estilista">
+      <Modal
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setForm(EMPTY_FORM) }}
+        title={editTarget ? 'Editar estilista' : 'Nueva estilista'}
+      >
         <div className="space-y-4">
           <Input
             label="Nombre completo *"
@@ -158,27 +160,9 @@ export default function AdminStylists() {
             onChange={(e) => setField('phone', e.target.value)}
             icon="📱"
           />
-          <Button size="full" loading={saving} onClick={addStylist}>
-            Agregar estilista
+          <Button size="full" loading={saving} onClick={save}>
+            {editTarget ? 'Guardar cambios' : 'Agregar estilista'}
           </Button>
-        </div>
-      </Modal>
-
-      {/* Confirm delete */}
-      <Modal open={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Eliminar estilista">
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600 font-medium">
-            ¿Seguro que deseas eliminar a <strong>{confirmDelete?.name}</strong>?
-            Si tiene citas asociadas no podrá eliminarse.
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(null)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" className="flex-1" onClick={() => deleteStylist(confirmDelete.id)}>
-              Eliminar
-            </Button>
-          </div>
         </div>
       </Modal>
     </AppShell>

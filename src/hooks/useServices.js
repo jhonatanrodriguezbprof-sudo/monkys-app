@@ -25,6 +25,7 @@ export default function useServices(salonId) {
       .from('services')
       .select('*')
       .eq('salon_id', id)
+      .eq('is_active', true)
       .order('price')
       .then(({ data, error }) => {
         setServices(data?.length ? data : FALLBACK_SERVICES)

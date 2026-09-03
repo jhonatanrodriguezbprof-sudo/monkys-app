@@ -13,7 +13,7 @@ import useServices from '../../hooks/useServices'
 import useStylists from '../../hooks/useStylists'
 
 const STEPS = ['Servicio', 'Estilista', 'Fecha y hora', 'Tus datos', 'Confirmar']
-const TIME_SLOTS = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00']
+const TIME_SLOTS = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00']
 
 export default function BookingPage() {
   const navigate = useNavigate()
@@ -36,6 +36,13 @@ export default function BookingPage() {
   })
 
   const set = (key, val) => setBooking((b) => ({ ...b, [key]: val }))
+
+  // Filter stylists by the selected service's categoria.
+  // Stylists without a categoria are always included (requirement 4).
+  const svcCat = booking.service?.categoria
+  const visibleStylists = (!svcCat || svcCat === 'ambos')
+    ? stylists
+    : stylists.filter((st) => !st.categoria || st.categoria === svcCat)
 
   async function fetchTakenSlots(stylistId, date) {
     const { data } = await supabase
@@ -129,7 +136,7 @@ export default function BookingPage() {
                   <Card
                     key={svc.id}
                     hover
-                    onClick={() => set('service', svc)}
+                    onClick={() => setBooking((b) => ({ ...b, service: svc, stylist: null }))}
                     className={`flex items-center justify-between ${booking.service?.id === svc.id ? 'border-primary border-2 bg-primary-50' : ''}`}
                   >
                     <div>
@@ -151,9 +158,14 @@ export default function BookingPage() {
         {step === 1 && (
           <>
             <h2 className="text-xl font-black text-brown">¿Con quién?</h2>
-            {loadingStylists ? <Spinner /> : (
+            {loadingStylists ? <Spinner /> : visibleStylists.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <p className="text-3xl mb-2">✂️</p>
+                <p className="font-medium text-sm">No hay estilistas disponibles para este servicio</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                {stylists.map((st) => (
+                {visibleStylists.map((st) => (
                   <Card
                     key={st.id}
                     hover

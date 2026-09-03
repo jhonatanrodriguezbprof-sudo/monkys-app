@@ -15,7 +15,7 @@ import Input from '../../components/ui/Input'
 const STATUSES = ['all', 'pending', 'confirmed', 'completed', 'cancelled', 'no-show']
 const STATUS_LABELS = { all: 'Todas', pending: 'Pendiente', confirmed: 'Confirmado', completed: 'Completado', cancelled: 'Cancelado', 'no-show': 'No asistió' }
 
-const TIME_SLOTS = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00']
+const TIME_SLOTS = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00']
 
 export default function AdminAppointments() {
   const { profile } = useAuth()

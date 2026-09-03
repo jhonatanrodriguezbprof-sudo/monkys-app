@@ -10,7 +10,10 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 
-const EMPTY_FORM = { name: '', duration_minutes: '', price: '' }
+const EMPTY_FORM = { name: '', duration_minutes: '', price: '', categoria: '' }
+
+const CAT_LABEL = { nina: '👧 Niña', nino: '👦 Niño', ambos: '👫 Ambos' }
+const CAT_OPTIONS = [['nina', '👧 Niña'], ['nino', '👦 Niño'], ['ambos', '👫 Ambos']]
 
 export default function AdminServices() {
   const { profile } = useAuth()
@@ -45,7 +48,7 @@ export default function AdminServices() {
 
   function openEdit(svc) {
     setEditTarget(svc)
-    setForm({ name: svc.name, duration_minutes: String(svc.duration_minutes), price: String(svc.price) })
+    setForm({ name: svc.name, duration_minutes: String(svc.duration_minutes), price: String(svc.price), categoria: svc.categoria || '' })
     setModalOpen(true)
   }
 
@@ -60,6 +63,7 @@ export default function AdminServices() {
       name: form.name.trim(),
       duration_minutes: parseInt(form.duration_minutes, 10),
       price: parseFloat(form.price),
+      categoria: form.categoria || null,
     }
     const { error } = editTarget
       ? await supabase.from('services').update(payload).eq('id', editTarget.id)
@@ -101,6 +105,9 @@ export default function AdminServices() {
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-xs text-gray-400">⏱ {svc.duration_minutes} min</span>
                   <span className="text-sm font-black text-primary">${svc.price.toLocaleString()}</span>
+                  {svc.categoria && (
+                    <Badge color="blue">{CAT_LABEL[svc.categoria]}</Badge>
+                  )}
                   <Badge color={isActive(svc) ? 'green' : 'gray'}>
                     {isActive(svc) ? 'Activo' : 'Inactivo'}
                   </Badge>
@@ -160,6 +167,25 @@ export default function AdminServices() {
             onChange={(e) => setField('price', e.target.value)}
             icon="💰"
           />
+          <div>
+            <p className="text-sm font-semibold text-brown mb-2">Categoría</p>
+            <div className="flex gap-2">
+              {CAT_OPTIONS.map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setField('categoria', form.categoria === val ? '' : val)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                    form.categoria === val
+                      ? 'bg-primary text-white shadow-md shadow-primary/20'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button size="full" loading={saving} onClick={save}>
             {editTarget ? 'Guardar cambios' : 'Crear servicio'}
           </Button>

@@ -10,7 +10,10 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 
-const EMPTY_FORM = { name: '', specialty: '', phone: '' }
+const EMPTY_FORM = { name: '', specialty: '', phone: '', categoria: '' }
+
+const CAT_LABEL = { nina: '👧 Niña', nino: '👦 Niño' }
+const CAT_OPTIONS = [['nina', '👧 Niña'], ['nino', '👦 Niño']]
 
 export default function AdminStylists() {
   const { profile } = useAuth()
@@ -45,7 +48,7 @@ export default function AdminStylists() {
 
   function openEdit(stylist) {
     setEditTarget(stylist)
-    setForm({ name: stylist.name, specialty: stylist.specialty || '', phone: stylist.phone || '' })
+    setForm({ name: stylist.name, specialty: stylist.specialty || '', phone: stylist.phone || '', categoria: stylist.categoria || '' })
     setModalOpen(true)
   }
 
@@ -59,6 +62,7 @@ export default function AdminStylists() {
       name: form.name.trim(),
       specialty: form.specialty.trim() || null,
       phone: form.phone.trim() || null,
+      categoria: form.categoria || null,
     }
     const { error } = editTarget
       ? await supabase.from('stylists').update(payload).eq('id', editTarget.id)
@@ -105,9 +109,12 @@ export default function AdminStylists() {
                 <p className="font-bold text-brown">{s.name}</p>
                 {s.specialty && <p className="text-xs text-gray-400 mt-0.5">{s.specialty}</p>}
                 {s.phone && <p className="text-xs text-primary font-medium mt-0.5">📱 {s.phone}</p>}
-                <Badge color={s.is_active ? 'green' : 'gray'} className="mt-1">
-                  {s.is_active ? 'Activa' : 'Inactiva'}
-                </Badge>
+                <div className="flex gap-1.5 mt-1 flex-wrap">
+                  {s.categoria && <Badge color="blue">{CAT_LABEL[s.categoria]}</Badge>}
+                  <Badge color={s.is_active ? 'green' : 'gray'}>
+                    {s.is_active ? 'Activa' : 'Inactiva'}
+                  </Badge>
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 <button
@@ -160,6 +167,25 @@ export default function AdminStylists() {
             onChange={(e) => setField('phone', e.target.value)}
             icon="📱"
           />
+          <div>
+            <p className="text-sm font-semibold text-brown mb-2">Categoría</p>
+            <div className="flex gap-2">
+              {CAT_OPTIONS.map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setField('categoria', form.categoria === val ? '' : val)}
+                  className={`flex-1 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                    form.categoria === val
+                      ? 'bg-primary text-white shadow-md shadow-primary/20'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button size="full" loading={saving} onClick={save}>
             {editTarget ? 'Guardar cambios' : 'Agregar estilista'}
           </Button>
